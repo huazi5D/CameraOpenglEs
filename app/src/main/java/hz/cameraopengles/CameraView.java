@@ -29,7 +29,7 @@ public class CameraView extends GLSurfaceView implements SurfaceTexture.OnFrameA
     public CameraView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setEGLContextClientVersion(2);
-        setRenderer(new CameraRenderer());
+        setRenderer(new CameraRenderer(context));
         setRenderMode(RENDERMODE_WHEN_DIRTY);
     }
 
@@ -39,6 +39,8 @@ public class CameraView extends GLSurfaceView implements SurfaceTexture.OnFrameA
     }
 
     private class CameraRenderer implements Renderer {
+
+        private Context mContext;
 
         private int mProgram;
 
@@ -55,12 +57,14 @@ public class CameraView extends GLSurfaceView implements SurfaceTexture.OnFrameA
         private float[] mTempMatrix     = new float[16];
 
         private float[] mPosCoordinate = {-1, -1, -1, 1, 1, -1, 1, 1};
-        private float[] mTexCoordinate = {-1, -1, -1, 1, 1, -1, 1, 1};
+        private float[] mTexCoordinate = {0, 1, 1, 1, 0, 0, 1, 0};
 
         private FloatBuffer mPosBuffer;
         private FloatBuffer mTexBuffer;
 
-        public CameraRenderer() {
+        public CameraRenderer(Context context) {
+            this.mContext = context;
+
             Matrix.setIdentityM(mProjectMatrix, 0);
             Matrix.setIdentityM(mCameraMatrix, 0);
             Matrix.setIdentityM(mMVPMatrix, 0);
@@ -73,7 +77,7 @@ public class CameraView extends GLSurfaceView implements SurfaceTexture.OnFrameA
         public void onSurfaceCreated(GL10 gl, EGLConfig config) {
             GLES20.glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
 
-            mProgram = ShaderUtils.createProgram("vertex.glsl", "fragment.glsl");
+            mProgram = ShaderUtils.createProgram(mContext, "vertex_texture.glsl", "fragment_texture.glsl");
             GLES20.glUseProgram(mProgram);
 
             createAndBindVideoTexture();
@@ -97,7 +101,7 @@ public class CameraView extends GLSurfaceView implements SurfaceTexture.OnFrameA
         @Override
         public void onSurfaceChanged(GL10 gl, int width, int height) {
             GLES20.glViewport(0, 0, width, height);
-            float ratio = (float)height/width;
+            float ratio = (float)width/height;
             Matrix.orthoM(mProjectMatrix,0,-1,1,-ratio,ratio,1,7);// 3和7代表远近视点与眼睛的距离，非坐标点
             Matrix.setLookAtM(mCameraMatrix, 0, 0, 0, 3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);// 3代表眼睛的坐标点
             Matrix.multiplyMM(mMVPMatrix, 0, mProjectMatrix, 0, mCameraMatrix, 0);
@@ -107,9 +111,9 @@ public class CameraView extends GLSurfaceView implements SurfaceTexture.OnFrameA
         public void onDrawFrame(GL10 gl) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
             mCameraTexture.updateTexImage();
-            mCameraTexture.getTransformMatrix(mTempMatrix);
-            Matrix.multiplyMM(mTempMatrix, 0, mTempMatrix, 0, mMVPMatrix, 0);
-            GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mTempMatrix, 0);
+//            mCameraTexture.getTransformMatrix(mTempMatrix);
+//            Matrix.multiplyMM(mTempMatrix, 0, mTempMatrix, 0, mMVPMatrix, 0);
+            GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, mPosCoordinate.length / 2);
         }
 
